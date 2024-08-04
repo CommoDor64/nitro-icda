@@ -1,6 +1,8 @@
 module github.com/offchainlabs/nitro
 
-go 1.21
+go 1.22.1
+
+toolchain go1.22.2
 
 replace github.com/VictoriaMetrics/fastcache => ./fastcache
 
@@ -50,7 +52,15 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
-require github.com/google/go-querystring v1.1.0 // indirect
+require (
+	github.com/aviate-labs/agent-go v0.5.0 // indirect
+	github.com/aviate-labs/leb128 v0.3.0 // indirect
+	github.com/aviate-labs/secp256k1 v0.0.0-5e6736a // indirect
+	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/herumi/bls-go-binary v1.34.0 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
+)
 
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
@@ -165,6 +175,6 @@ require (
 	golang.org/x/sync v0.5.0
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
