@@ -231,6 +231,18 @@ func RecoverPayloadFromDasBatch(
 		}
 	}
 
+	// type CertifiedResponse struct {
+	// 	Signature []byte `json:"signature"`
+	// 	Data      []byte `json:"data"`
+	// 	Witness   []byte `json:"witness"`
+	// }
+
+	// payloadCert := iccert.Certificate{}
+	// {
+	// 	if cbor.Unmarshal()
+	// }
+
+	fmt.Println(payload)
 	return payload, nil
 }
 

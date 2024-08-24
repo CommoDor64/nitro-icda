@@ -81,6 +81,7 @@ func parseSequencerMessage(ctx context.Context, batchNum uint64, batchBlockHash 
 		for _, dapReader := range dapReaders {
 			if dapReader != nil && dapReader.IsValidHeaderByte(payload[0]) {
 				payload, err = dapReader.RecoverPayloadFromBatch(ctx, batchNum, batchBlockHash, data, nil, keysetValidationMode != daprovider.KeysetDontValidate)
+				fmt.Println("this is the payload from RecoverPayloadFromBatch: ", payload)
 				if err != nil {
 					// Matches the way keyset validation was done inside DAS readers i.e logging the error
 					//  But other daproviders might just want to return the error
@@ -127,6 +128,8 @@ func parseSequencerMessage(ctx context.Context, batchNum uint64, batchBlockHash 
 	// Stage 3: Decompress the brotli payload and fill the parsedMsg.segments list.
 	if len(payload) > 0 && daprovider.IsBrotliMessageHeaderByte(payload[0]) {
 		decompressed, err := arbcompress.Decompress(payload[1:], MaxDecompressedLen)
+		fmt.Println("this is the decompressed before stream decode: ", decompressed)
+
 		if err == nil {
 			reader := bytes.NewReader(decompressed)
 			stream := rlp.NewStream(reader, uint64(MaxDecompressedLen))
@@ -158,6 +161,7 @@ func parseSequencerMessage(ctx context.Context, batchNum uint64, batchBlockHash 
 
 	}
 
+	fmt.Println("this is the parsed message before return: ", parsedMsg)
 	return parsedMsg, nil
 }
 

@@ -41,7 +41,7 @@ type DataAvailabilityConfig struct {
 	LocalCache CacheConfig `koanf:"local-cache"`
 	RedisCache RedisConfig `koanf:"redis-cache"`
 
-	ICStorage        ICStorageConfig        `konaf:"ic-storage"`
+	ICStorage        ICStorageConfig        `koanf:"ic-storage"`
 	LocalDBStorage   LocalDBStorageConfig   `koanf:"local-db-storage"`
 	LocalFileStorage LocalFileStorageConfig `koanf:"local-file-storage"`
 	S3Storage        S3StorageServiceConfig `koanf:"s3-storage"`
@@ -112,7 +112,7 @@ func dataAvailabilityConfigAddOptions(prefix string, f *flag.FlagSet, r role) {
 		RedisConfigAddOptions(prefix+".redis-cache", f)
 
 		// Storage options
-		ICStorageConfigAddOptions(prefix+"ic-storage", f)
+		ICStorageConfigAddOptions(prefix+".ic-storage", f)
 		LocalDBStorageConfigAddOptions(prefix+".local-db-storage", f)
 		LocalFileStorageConfigAddOptions(prefix+".local-file-storage", f)
 		S3ConfigAddOptions(prefix+".s3-storage", f)

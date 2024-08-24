@@ -269,8 +269,8 @@ COPY ./scripts/validate-wasm-module-root.sh .
 RUN ./validate-wasm-module-root.sh /home/user/target/machines /usr/local/bin/prover
 USER root
 RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update && \
-    apt-get install -y \
+    apt-get update --allow-unauthenticated && \
+    apt-get install --allow-unauthenticated -y \
     ca-certificates \
     wabt \
     sysstat && \

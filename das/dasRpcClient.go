@@ -110,6 +110,20 @@ func (c *DASRPCClient) Store(ctx context.Context, message []byte, timeout uint64
 		return nil, err
 	}
 
+	{
+		// FIXME: we need a cleaner way to do it!
+		rc, err := NewRestfulDasClientFromURL("http://localhost:9877")
+		if err != nil {
+			return nil, err
+		}
+
+		// we don't care about the result, we just want to get the object we just inserted and verify
+		// it's existance
+		if _, err := rc.GetByHash(ctx, common.BytesToHash(storeResult.DataHash)); err != nil {
+			return nil, err
+		}
+	}
+
 	respSig, err := blsSignatures.SignatureFromBytes(storeResult.Sig)
 	if err != nil {
 		return nil, err

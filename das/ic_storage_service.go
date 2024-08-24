@@ -3,13 +3,14 @@ package das
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"net/url"
 	"time"
 
 	"github.com/aviate-labs/agent-go"
-	"github.com/aviate-labs/agent-go/ic"
+	"github.com/aviate-labs/agent-go/principal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 	"github.com/offchainlabs/nitro/das/dastree"
@@ -17,36 +18,73 @@ import (
 )
 
 type ExpirationPolicy struct{}
+type CanisterId string
 
 type ICStorageConfig struct {
-	Enable bool `koanf:"enable"`
+	Enable   bool       `koanf:"enable"`
+	Network  string     `konaf:"network"`
+	Canister CanisterId `konaf:"canister"`
+}
+
+var DefaultTestStorageConfig = ICStorageConfig{
+	Enable:   true,
+	Network:  "http://172.17.0.1:4943/",
+	Canister: "bkyz2-fmaaa-aaaaa-qaaaq-cai",
 }
 
 func ICStorageConfigAddOptions(prefix string, f *flag.FlagSet) {
-	f.Bool(prefix+".enable", DefaultLocalDBStorageConfig.Enable, "enable storage/retrieval of sequencer batch data from a database on the local filesystem")
+	f.Bool(prefix+".enable", false, "enable the internet computer(ic) as a da layer")
+	f.String(prefix+".network", DefaultTestStorageConfig.Network, "url of the ic network")
+	f.String(prefix+".canister", string(DefaultTestStorageConfig.Canister), "readable canister ids")
 }
 
-type ICStorageService struct{}
+type ICStorageService struct {
+	Agent    *Agent
+	Canister principal.Principal
+	Cache    map[string]string
+}
 
 func NewICStorageService(config ICStorageConfig) (StorageService, error) {
-	return ICStorageService{}, nil
+	u, err := url.Parse(config.Network)
+	if err != nil {
+		return nil, err
+	}
+
+	aconfig := agent.Config{
+		ClientConfig:                   &agent.ClientConfig{Host: u},
+		FetchRootKey:                   true,
+		DisableSignedQueryVerification: true,
+	}
+
+	p := principal.MustDecode(string(config.Canister))
+
+	a, err := NewAgent(p, aconfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return ICStorageService{
+		Cache:    map[string]string{},
+		Canister: p,
+		Agent:    a,
+	}, nil
 }
 
 func (s *ICStorageService) Read(ctx context.Context) error {
 	return nil
 }
 
-type (
-	Account struct {
-		Account string `ic:"account"`
-	}
-
-	Balance struct {
-		E8S uint64 `ic:"e8s"`
-	}
-)
-
 func (s ICStorageService) Put(ctx context.Context, data []byte, expirationTime uint64) error {
+	_, err := s.Agent.Store(
+		dastree.Hash(data).Hex(),
+		Object{
+			Data: data,
+		})
+
+	if err != nil {
+		return nil
+	}
+
 	return nil
 }
 
@@ -55,24 +93,27 @@ func (s ICStorageService) Sync(ctx context.Context) error {
 }
 
 func (s ICStorageService) GetByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
-	u, _ := url.Parse("http://host.docker.internal:40363")
-	config := agent.Config{
-		ClientConfig: &agent.ClientConfig{Host: u},
-		FetchRootKey: true,
-	}
-	a, _ := agent.New(config)
 
-	var balance Balance
-	if err := a.Query(
-		ic.LEDGER_PRINCIPAL, "account_balance_dfx",
-		[]any{Account{"21e7a49f00b40e83c2eb17468070566d2d6fc8cf4ae2cf3f54dee335de10745b"}},
-		[]any{&balance},
-	); err != nil {
-		log.Fatal(err)
+	blockHash := hash.Hex()
+	if hash == [32]byte{} {
+		return nil, errors.New(fmt.Sprintf("expected well formed hash, got %v", blockHash))
 	}
 
-	_ = balance
-	return nil, nil
+	cb, err := s.Agent.Fetch(blockHash)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := VerifyDataFromIC(cb.Certificate, s.Agent.GetRootKey(), s.Canister, cb.Witness); err != nil {
+		return nil, err
+	}
+
+	b, err := json.Marshal(cb)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func (s ICStorageService) ExpirationPolicy(ctx context.Context) (daprovider.ExpirationPolicy, error) {

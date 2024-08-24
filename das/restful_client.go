@@ -11,9 +11,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/aviate-labs/agent-go"
+	"github.com/aviate-labs/agent-go/principal"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 	"github.com/offchainlabs/nitro/das/dastree"
 )
@@ -40,7 +44,13 @@ func NewRestfulDasClientFromURL(url string) (*RestfulDasClient, error) {
 }
 
 func (c *RestfulDasClient) GetByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
-	res, err := http.Get(c.url + getByHashRequestPath + EncodeStorageServiceKey(hash))
+	fmt.Println(c.url + getByHashRequestPath + hash.Hex())
+	prefixHash := hash.Hex()
+	if len(prefixHash) == 64 {
+		prefixHash = "0x" + prefixHash
+	}
+
+	res, err := http.Get(c.url + getByHashRequestPath + prefixHash)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +74,42 @@ func (c *RestfulDasClient) GetByHash(ctx context.Context, hash common.Hash) ([]b
 	if err != nil {
 		return nil, err
 	}
+
 	if !dastree.ValidHash(hash, decodedBytes) {
 		return nil, daprovider.ErrHashMismatch
+	}
+
+	// This block is IC verification specific
+	{
+
+		u, err := url.Parse(DefaultTestStorageConfig.Network)
+		if err != nil {
+			return nil, err
+		}
+
+		aconfig := agent.Config{
+			ClientConfig:                   &agent.ClientConfig{Host: u},
+			FetchRootKey:                   true,
+			DisableSignedQueryVerification: true,
+		}
+
+		p := principal.MustDecode(string(DefaultTestStorageConfig.Canister))
+
+		a, err := NewAgent(p, aconfig)
+		if err != nil {
+			return nil, err
+		}
+
+		rootKey := a.GetRootKey()
+
+		var cb CertifiedBlock
+		if err := cbor.Unmarshal(decodedBytes, &c); err != nil {
+			return nil, err
+		}
+
+		if err := VerifyDataFromIC(cb.Certificate, rootKey, p, cb.Witness); err != nil {
+			return nil, err
+		}
 	}
 
 	return decodedBytes, nil
