@@ -53,7 +53,7 @@ require (
 )
 
 require (
-	github.com/aviate-labs/agent-go v0.5.0 // indirect
+	github.com/aviate-labs/agent-go v0.5.1 // indirect
 	github.com/aviate-labs/leb128 v0.3.0 // indirect
 	github.com/aviate-labs/secp256k1 v0.0.0-5e6736a // indirect
 	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
-	github.com/consensys/gnark-crypto v0.12.1 // indirect
+	github.com/consensys/gnark-crypto v0.12.2-0.20240215234832-d72fcb379d3e // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20231025140028-3c0104f4b233 // indirect
 	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect

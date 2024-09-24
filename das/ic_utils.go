@@ -83,9 +83,6 @@ func (a Agent) FetchEcdsa(arg0 string) (**CertifiedBlockECDSA, error) {
 
 // Store calls the "store" method on the "test" canister.
 func (a Agent) Store(arg0 string, arg1 Object) (*StorageReceipt, error) {
-	fmt.Println("arg0:", arg0)
-	fmt.Println("arg1:", arg1)
-	fmt.Println("arg1.Data:", arg1.Data)
 	var r0 StorageReceipt
 	if err := a.Agent.Call(
 		a.CanisterId,

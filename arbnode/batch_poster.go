@@ -987,11 +987,13 @@ func (b *BatchPoster) estimateGas(ctx context.Context, sequencerMessage []byte, 
 		return 0, err
 	}
 	maxFeePerGas := arbmath.BigMulByBips(latestHeader.BaseFee, config.GasEstimateBaseFeeMultipleBips)
+
 	if useNormalEstimation {
 		_, realBlobHashes, err := blobs.ComputeCommitmentsAndHashes(realBlobs)
 		if err != nil {
 			return 0, fmt.Errorf("failed to compute real blob commitments: %w", err)
 		}
+
 		// If we're at the latest nonce, we can skip the special future tx estimate stuff
 		gas, err := estimateGas(rawRpcClient, ctx, estimateGasParams{
 			From:         b.dataPoster.Sender(),
@@ -1019,6 +1021,7 @@ func (b *BatchPoster) estimateGas(ctx context.Context, sequencerMessage []byte, 
 	if err != nil {
 		return 0, fmt.Errorf("failed to compute blob commitments: %w", err)
 	}
+
 	gas, err := estimateGas(rawRpcClient, ctx, estimateGasParams{
 		From:         b.dataPoster.Sender(),
 		To:           &b.seqInboxAddr,
@@ -1043,6 +1046,7 @@ func (b *BatchPoster) estimateGas(ctx context.Context, sequencerMessage []byte, 
 		)
 		return 0, fmt.Errorf("error estimating gas for batch: %w", err)
 	}
+
 	return gas + config.ExtraBatchGas, nil
 }
 
@@ -1353,10 +1357,12 @@ func (b *BatchPoster) maybePostSequencerBatch(ctx context.Context) (bool, error)
 	// In theory, this might reduce gas usage, but only by a factor that's already
 	// accounted for in `config.ExtraBatchGas`, as that same factor can appear if a user
 	// posts a new delayed message that we didn't see while gas estimating.
+
 	gasLimit, err := b.estimateGas(ctx, sequencerMsg, lastPotentialMsg.DelayedMessagesRead, data, kzgBlobs, nonce, accessList)
 	if err != nil {
 		return false, err
 	}
+
 	newMeta, err := rlp.EncodeToBytes(batchPosterPosition{
 		MessageCount:        b.building.msgCount,
 		DelayedMessageCount: b.building.segments.delayedMsg,

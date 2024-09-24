@@ -11,13 +11,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
-	"github.com/aviate-labs/agent-go"
 	"github.com/aviate-labs/agent-go/principal"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/fxamacker/cbor/v2"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 	"github.com/offchainlabs/nitro/das/dastree"
 )
@@ -79,35 +76,13 @@ func (c *RestfulDasClient) GetByHash(ctx context.Context, hash common.Hash) ([]b
 		return nil, daprovider.ErrHashMismatch
 	}
 
-	// This block is IC verification specific
+	// ICDA: verify L2 data coming from ic
 	{
-
-		u, err := url.Parse(DefaultTestStorageConfig.Network)
-		if err != nil {
-			return nil, err
-		}
-
-		aconfig := agent.Config{
-			ClientConfig:                   &agent.ClientConfig{Host: u},
-			FetchRootKey:                   true,
-			DisableSignedQueryVerification: true,
-		}
-
 		p := principal.MustDecode(string(DefaultTestStorageConfig.Canister))
 
-		a, err := NewAgent(p, aconfig)
-		if err != nil {
-			return nil, err
-		}
+		rootKey := []byte{48, 129, 130, 48, 29, 6, 13, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 1, 2, 1, 6, 12, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 2, 1, 3, 97, 0, 151, 44, 207, 171, 16, 137, 198, 63, 87, 184, 84, 51, 254, 212, 167, 141, 232, 147, 119, 62, 104, 240, 46, 216, 20, 142, 37, 69, 85, 100, 94, 42, 170, 62, 155, 81, 217, 221, 1, 191, 15, 5, 36, 241, 199, 156, 13, 92, 18, 244, 75, 103, 202, 230, 240, 73, 21, 207, 253, 164, 169, 220, 115, 119, 235, 209, 55, 211, 41, 75, 219, 209, 247, 25, 252, 215, 179, 180, 52, 119, 219, 248, 96, 53, 215, 237, 203, 183, 179, 101, 31, 26, 10, 222, 191, 56}
 
-		rootKey := a.GetRootKey()
-
-		var cb CertifiedBlock
-		if err := cbor.Unmarshal(decodedBytes, &c); err != nil {
-			return nil, err
-		}
-
-		if err := VerifyDataFromIC(cb.Certificate, rootKey, p, cb.Witness); err != nil {
+		if err := VerifyDataFromIC(response.Certificate, rootKey, p, response.Witness); err != nil {
 			return nil, err
 		}
 	}

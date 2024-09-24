@@ -74,6 +74,8 @@ func NewRestfulDasServerOnListener(listener net.Listener, restServerTimeouts gen
 }
 
 type RestfulDasServerResponse struct {
+	Certificate      []byte `json:"certificate,omitempty"`
+	Witness          []byte `json:"witness,omitempty"`
 	Data             string `json:"data,omitempty"`
 	ExpirationPolicy string `json:"expirationPolicy,omitempty"`
 }
