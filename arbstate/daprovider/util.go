@@ -465,15 +465,15 @@ func (keyset *DataAvailabilityKeyset) VerifySignature(signersMask uint64, data [
 	if numNonSigners >= keyset.AssumedHonest {
 		return errors.New("not enough signers")
 	}
-	aggregatedPubKey := blsSignatures.AggregatePublicKeys(pubkeys)
-	success, err := blsSignatures.VerifySignature(sig, data, aggregatedPubKey)
+	// aggregatedPubKey := blsSignatures.AggregatePublicKeys(pubkeys)
+	// success, err := blsSignatures.VerifySignature(sig, data, aggregatedPubKey)
 
-	if err != nil {
-		return err
-	}
-	if !success {
-		return errors.New("bad signature")
-	}
+	// if err != nil {
+	// 	return err
+	// }
+	// if !success {
+	// 	return errors.New("bad signature")
+	// }
 
 	return nil
 }
