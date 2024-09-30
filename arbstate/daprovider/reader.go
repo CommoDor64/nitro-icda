@@ -104,5 +104,6 @@ func (b *readerForBlobReader) RecoverPayloadFromBatch(
 		log.Warn("Failed to decode blobs", "batchBlockHash", batchBlockHash, "versionedHashes", versionedHashes, "err", err)
 		return nil, nil
 	}
+
 	return payload, nil
 }

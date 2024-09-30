@@ -127,6 +127,7 @@ func parseSequencerMessage(ctx context.Context, batchNum uint64, batchBlockHash 
 	// Stage 3: Decompress the brotli payload and fill the parsedMsg.segments list.
 	if len(payload) > 0 && daprovider.IsBrotliMessageHeaderByte(payload[0]) {
 		decompressed, err := arbcompress.Decompress(payload[1:], MaxDecompressedLen)
+
 		if err == nil {
 			reader := bytes.NewReader(decompressed)
 			stream := rlp.NewStream(reader, uint64(MaxDecompressedLen))

@@ -256,5 +256,11 @@ func SignatureToBytes(sig Signature) []byte {
 
 func SignatureFromBytes(in []byte) (Signature, error) {
 	g1 := bls12381.NewG1()
-	return g1.FromBytes(in)
+
+	s, err := g1.FromBytes(in)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }

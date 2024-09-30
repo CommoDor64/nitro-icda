@@ -27,6 +27,15 @@ func CreatePersistentStorageService(
 	var lifecycleManager LifecycleManager
 	var err error
 
+	if config.ICStorage.Enable {
+		s, err := NewICStorageService(config.ICStorage)
+		if err != nil {
+			return nil, nil, err
+		}
+		lifecycleManager.Register(s)
+		storageServices = append(storageServices, s)
+	}
+
 	var fs *LocalFileStorageService
 	if config.LocalFileStorage.Enable {
 		fs, err = NewLocalFileStorageService(config.LocalFileStorage)

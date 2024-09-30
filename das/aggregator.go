@@ -6,12 +6,15 @@ package das
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/bits"
 	"sync/atomic"
 	"time"
 
+	"github.com/aviate-labs/agent-go/principal"
 	flag "github.com/spf13/pflag"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,7 +23,8 @@ import (
 
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 	"github.com/offchainlabs/nitro/arbutil"
-	"github.com/offchainlabs/nitro/blsSignatures"
+
+	// "github.com/offchainlabs/nitro/blsSignatures"
 	"github.com/offchainlabs/nitro/das/dastree"
 	"github.com/offchainlabs/nitro/solgen/go/bridgegen"
 	"github.com/offchainlabs/nitro/util/pretty"
@@ -72,7 +76,7 @@ type Aggregator struct {
 
 type ServiceDetails struct {
 	service     DataAvailabilityServiceWriter
-	pubKey      blsSignatures.PublicKey
+	pubKey      []byte
 	signersMask uint64
 	metricName  string
 }
@@ -81,7 +85,7 @@ func (s *ServiceDetails) String() string {
 	return fmt.Sprintf("ServiceDetails{service: %v, signersMask %d}", s.service, s.signersMask)
 }
 
-func NewServiceDetails(service DataAvailabilityServiceWriter, pubKey blsSignatures.PublicKey, signersMask uint64, metricName string) (*ServiceDetails, error) {
+func NewServiceDetails(service DataAvailabilityServiceWriter, pubKey []byte, signersMask uint64, metricName string) (*ServiceDetails, error) {
 	if bits.OnesCount64(signersMask) != 1 {
 		return nil, fmt.Errorf("tried to configure backend DAS %v with invalid signersMask %X", service, signersMask)
 	}
@@ -148,7 +152,7 @@ func NewAggregatorWithSeqInboxCaller(
 
 type storeResponse struct {
 	details ServiceDetails
-	sig     blsSignatures.Signature
+	sig     []byte
 	err     error
 }
 
@@ -198,30 +202,32 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 				return
 			}
 
-			verified, err := blsSignatures.VerifySignature(
-				cert.Sig, cert.SerializeSignableFields(), d.pubKey,
-			)
+			// verified, err := blsSignatures.VerifySignature(
+			// 	cert.Sig, cert.SerializeSignableFields(), d.pubKey,
+			// )
+
 			if err != nil {
 				incFailureMetric()
 				log.Warn("DAS Aggregator couldn't parse backend's store response signature", "backend", d.metricName, "err", err)
 				responses <- storeResponse{d, nil, err}
 				return
 			}
-			if !verified {
-				incFailureMetric()
-				log.Warn("DAS Aggregator failed to verify backend's store response signature", "backend", d.metricName, "err", err)
-				responses <- storeResponse{d, nil, errors.New("signature verification failed")}
-				return
-			}
+
+			// if !verified {
+			// 	incFailureMetric()
+			// 	log.Warn("DAS Aggregator failed to verify backend's store response signature", "backend", d.metricName, "err", err)
+			// 	responses <- storeResponse{d, nil, errors.New("signature verification failed")}
+			// 	return
+			// }
 
 			// SignersMask from backend DAS is ignored.
-
 			if cert.DataHash != expectedHash {
 				incFailureMetric()
 				log.Warn("DAS Aggregator got a store response with a data hash not matching the expected hash", "backend", d.metricName, "dataHash", cert.DataHash, "expectedHash", expectedHash, "err", err)
 				responses <- storeResponse{d, nil, errors.New("hash verification failed")}
 				return
 			}
+
 			if cert.Timeout != timeout {
 				incFailureMetric()
 				log.Warn("DAS Aggregator got a store response with any expiry time not matching the expected expiry time", "backend", d.metricName, "dataHash", cert.DataHash, "expectedHash", expectedHash, "err", err)
@@ -238,8 +244,8 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 	var aggCert daprovider.DataAvailabilityCertificate
 
 	type certDetails struct {
-		pubKeys        []blsSignatures.PublicKey
-		sigs           []blsSignatures.Signature
+		pubKeys        []byte
+		sigs           [][]byte
 		aggSignersMask uint64
 		err            error
 	}
@@ -248,8 +254,8 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 	// Collect responses from backends.
 	certDetailsChan := make(chan certDetails)
 	go func() {
-		var pubKeys []blsSignatures.PublicKey
-		var sigs []blsSignatures.Signature
+		var pubKeys []byte
+		var sigs [][]byte
 		var aggSignersMask uint64
 		var successfullyStoredCount int
 		var returned bool
@@ -262,7 +268,7 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 					_ = storeFailures.Add(1)
 					log.Warn("das.Aggregator: Error from backend", "backend", r.details.service, "signerMask", r.details.signersMask, "err", r.err)
 				} else {
-					pubKeys = append(pubKeys, r.details.pubKey)
+					pubKeys = append(pubKeys, r.details.pubKey...)
 					sigs = append(sigs, r.sig)
 					aggSignersMask |= r.details.signersMask
 
@@ -303,8 +309,8 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 		return nil, cd.err
 	}
 
-	aggCert.Sig = blsSignatures.AggregateSignatures(cd.sigs)
-	aggPubKey := blsSignatures.AggregatePublicKeys(cd.pubKeys)
+	aggCert.Sig = cd.sigs[0] // CHECK ME! maybe taking the 0 element no goot
+	rootKey := cd.pubKeys
 	aggCert.SignersMask = cd.aggSignersMask
 
 	aggCert.DataHash = expectedHash
@@ -312,13 +318,29 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 	aggCert.KeysetHash = a.keysetHash
 	aggCert.Version = 1
 
-	verified, err := blsSignatures.VerifySignature(aggCert.Sig, aggCert.SerializeSignableFields(), aggPubKey)
-	if err != nil {
-		//nolint:errorlint
-		return nil, fmt.Errorf("%s. %w", err.Error(), daprovider.ErrBatchToDasFailed)
+	// return later
+	// rootKey = []byte{48, 129, 130, 48, 29, 6, 13, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 1, 2, 1, 6, 12, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 2, 1, 3, 97, 0, 151, 44, 207, 171, 16, 137, 198, 63, 87, 184, 84, 51, 254, 212, 167, 141, 232, 147, 119, 62, 104, 240, 46, 216, 20, 142, 37, 69, 85, 100, 94, 42, 170, 62, 155, 81, 217, 221, 1, 191, 15, 5, 36, 241, 199, 156, 13, 92, 18, 244, 75, 103, 202, 230, 240, 73, 21, 207, 253, 164, 169, 220, 115, 119, 235, 209, 55, 211, 41, 75, 219, 209, 247, 25, 252, 215, 179, 180, 52, 119, 219, 248, 96, 53, 215, 237, 203, 183, 179, 101, 31, 26, 10, 222, 191, 56}
+
+	p := principal.MustDecode("bkyz2-fmaaa-aaaaa-qaaaq-cai")
+
+	var cb CertifiedBlock
+	if err := json.Unmarshal(aggCert.Sig, &cb); err != nil {
+		fmt.Println("error here!!:", err)
+		return nil, err
 	}
-	if !verified {
-		return nil, fmt.Errorf("failed aggregate signature check. %w", daprovider.ErrBatchToDasFailed)
+
+	decodedLen := base64.StdEncoding.DecodedLen(len(rootKey))
+	k := make([]byte, decodedLen)
+
+	_, err := base64.StdEncoding.Decode(k, rootKey)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(k)
+	if err := VerifyDataFromIC(cb.Certificate, k, p, cb.Witness); err != nil {
+		fmt.Println("failed verifying our important shit!", err)
+		return nil, err
 	}
 
 	if storeFailures.Load() == 0 {

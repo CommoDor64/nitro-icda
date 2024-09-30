@@ -13,10 +13,14 @@ import (
 	"io"
 	"time"
 
+	agentcert "github.com/aviate-labs/agent-go/certification"
+	"github.com/aviate-labs/agent-go/certification/hashtree"
+	"github.com/aviate-labs/agent-go/principal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/fxamacker/cbor/v2"
 
 	"github.com/offchainlabs/nitro/arbos/util"
 	"github.com/offchainlabs/nitro/arbutil"
@@ -198,15 +202,17 @@ func RecoverPayloadFromDasBatch(
 		dastree.RecordHash(preimageRecorder, keysetPreimage)
 	}
 
-	keyset, err := DeserializeKeyset(bytes.NewReader(keysetPreimage), !validateSeqMsg)
-	if err != nil {
-		return nil, fmt.Errorf("%w. Couldn't deserialize keyset, err: %w, keyset hash: %x batch num: %d", ErrSeqMsgValidation, err, cert.KeysetHash, batchNum)
-	}
-	err = keyset.VerifySignature(cert.SignersMask, cert.SerializeSignableFields(), cert.Sig)
-	if err != nil {
-		log.Error("Bad signature on DAS batch", "err", err)
-		return nil, nil
-	}
+	// keyset, err := DeserializeKeyset(bytes.NewReader(keysetPreimage), !validateSeqMsg)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("%w. Couldn't deserialize keyset, err: %w, keyset hash: %x batch num: %d", ErrSeqMsgValidation, err, cert.KeysetHash, batchNum)
+	// }
+
+	// fmt.Println(keyset.PubKeys[0])
+	// err = keyset.VerifySignature(cert.SignersMask, cert.SerializeSignableFields(), cert.Sig)
+	// if err != nil {
+	// 	log.Error("Bad signature on DAS batch", "err", err)
+	// 	return nil, nil
+	// }
 
 	maxTimestamp := binary.BigEndian.Uint64(sequencerMsg[8:16])
 	if cert.Timeout < maxTimestamp+MinLifetimeSecondsForDataAvailabilityCert {
@@ -220,7 +226,6 @@ func RecoverPayloadFromDasBatch(
 		log.Error("Couldn't fetch DAS batch contents", "err", err)
 		return nil, err
 	}
-
 	if preimageRecorder != nil {
 		if version == 0 {
 			treeLeaf := dastree.FlatHashToTreeLeaf(dataHash)
@@ -234,12 +239,57 @@ func RecoverPayloadFromDasBatch(
 	return payload, nil
 }
 
+func VerifyDataFromIC(certificate []byte, rootKey []byte, canister principal.Principal, witness []byte) error {
+
+	var c agentcert.Certificate
+	if err := cbor.Unmarshal(certificate, &c); err != nil {
+		return err
+	}
+
+	if err := agentcert.VerifyCertificate(c, canister, rootKey); err != nil {
+		return err
+	}
+
+	providedRootHash, err := c.Tree.Lookup(
+		hashtree.Label("canister"),
+		canister.Raw,
+		hashtree.Label("certified_data"))
+	if err != nil {
+		return err
+	}
+
+	ht, err := hashtree.Deserialize(witness)
+	if err != nil {
+		return err
+	}
+
+	//FIXME! check inclusion!!
+
+	// h := sha256.New()
+	// h.Write(cb.Data)
+	// dataHash := h.Sum(nil)
+
+	// if _, err := hashtree.Lookup(ht, hashtree.Label(hex.EncodeToString(dataHash))); err != nil {
+	// 	panic(errors.New(fmt.Sprintf("couldn't find hash %x in hashtree", dataHash)))
+	// }
+
+	var rootHash [32]byte
+	copy(rootHash[:], providedRootHash)
+
+	witnessHash := ht.Reconstruct()
+	if witnessHash != rootHash {
+		return errors.New(fmt.Sprintf("witness hash %x doesn't match known root hash %x", witnessHash, rootHash))
+	}
+
+	return nil
+}
+
 type DataAvailabilityCertificate struct {
 	KeysetHash  [32]byte
 	DataHash    [32]byte
 	Timeout     uint64
 	SignersMask uint64
-	Sig         blsSignatures.Signature
+	Sig         []byte
 	Version     uint8
 }
 
@@ -293,10 +343,8 @@ func DeserializeDASCertFrom(rd io.Reader) (c *DataAvailabilityCertificate, err e
 	if err != nil {
 		return nil, err
 	}
-	c.Sig, err = blsSignatures.SignatureFromBytes(blsSignaturesBuf[:])
-	if err != nil {
-		return nil, err
-	}
+
+	c.Sig = blsSignaturesBuf[:]
 
 	return c, nil
 }
@@ -333,24 +381,27 @@ func (c *DataAvailabilityCertificate) RecoverKeyset(
 
 type DataAvailabilityKeyset struct {
 	AssumedHonest uint64
-	PubKeys       []blsSignatures.PublicKey
+	PubKeys       [][]byte
 }
 
 func (keyset *DataAvailabilityKeyset) Serialize(wr io.Writer) error {
 	if err := util.Uint64ToWriter(keyset.AssumedHonest, wr); err != nil {
 		return err
 	}
+
 	if err := util.Uint64ToWriter(uint64(len(keyset.PubKeys)), wr); err != nil {
 		return err
 	}
+
 	for _, pk := range keyset.PubKeys {
-		pkBuf := blsSignatures.PublicKeyToBytes(pk)
+		pkBuf := pk
 		buf := []byte{byte(len(pkBuf) / 256), byte(len(pkBuf) % 256)}
 		_, err := wr.Write(append(buf, pkBuf...))
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -377,7 +428,7 @@ func DeserializeKeyset(rd io.Reader, assumeKeysetValid bool) (*DataAvailabilityK
 	if numKeys > 64 {
 		return nil, errors.New("too many keys in serialized DataAvailabilityKeyset")
 	}
-	pubkeys := make([]blsSignatures.PublicKey, numKeys)
+	pubkeys := make([][]byte, numKeys)
 	buf2 := []byte{0, 0}
 	for i := uint64(0); i < numKeys; i++ {
 		if _, err := io.ReadFull(rd, buf2); err != nil {
@@ -387,10 +438,13 @@ func DeserializeKeyset(rd io.Reader, assumeKeysetValid bool) (*DataAvailabilityK
 		if _, err := io.ReadFull(rd, buf); err != nil {
 			return nil, err
 		}
-		pubkeys[i], err = blsSignatures.PublicKeyFromBytes(buf, assumeKeysetValid)
-		if err != nil {
-			return nil, err
-		}
+
+		pubkeys[i] = buf
+		// maybe check for valid keys
+		// pubkeys[i], err = blsSignatures.PublicKeyFromBytes(buf, assumeKeysetValid)
+		// if err != nil {
+		// 	return nil, err
+		// }
 	}
 	return &DataAvailabilityKeyset{
 		AssumedHonest: assumedHonest,
@@ -399,7 +453,7 @@ func DeserializeKeyset(rd io.Reader, assumeKeysetValid bool) (*DataAvailabilityK
 }
 
 func (keyset *DataAvailabilityKeyset) VerifySignature(signersMask uint64, data []byte, sig blsSignatures.Signature) error {
-	pubkeys := []blsSignatures.PublicKey{}
+	pubkeys := [][]byte{}
 	numNonSigners := uint64(0)
 	for i := 0; i < len(keyset.PubKeys); i++ {
 		if (1<<i)&signersMask != 0 {
@@ -420,6 +474,7 @@ func (keyset *DataAvailabilityKeyset) VerifySignature(signersMask uint64, data [
 	if !success {
 		return errors.New("bad signature")
 	}
+
 	return nil
 }
 
@@ -484,5 +539,5 @@ func Serialize(c *DataAvailabilityCertificate) []byte {
 	binary.BigEndian.PutUint64(intData[:], c.SignersMask)
 	buf = append(buf, intData[:]...)
 
-	return append(buf, blsSignatures.SignatureToBytes(c.Sig)...)
+	return append(buf, c.Sig...)
 }

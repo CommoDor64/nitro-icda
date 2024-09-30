@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aviate-labs/agent-go/principal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 	"github.com/offchainlabs/nitro/das/dastree"
@@ -40,7 +41,13 @@ func NewRestfulDasClientFromURL(url string) (*RestfulDasClient, error) {
 }
 
 func (c *RestfulDasClient) GetByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
-	res, err := http.Get(c.url + getByHashRequestPath + EncodeStorageServiceKey(hash))
+	fmt.Println(c.url + getByHashRequestPath + hash.Hex())
+	prefixHash := hash.Hex()
+	if len(prefixHash) == 64 {
+		prefixHash = "0x" + prefixHash
+	}
+
+	res, err := http.Get(c.url + getByHashRequestPath + prefixHash)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +71,20 @@ func (c *RestfulDasClient) GetByHash(ctx context.Context, hash common.Hash) ([]b
 	if err != nil {
 		return nil, err
 	}
+
 	if !dastree.ValidHash(hash, decodedBytes) {
 		return nil, daprovider.ErrHashMismatch
+	}
+
+	// ICDA: verify L2 data coming from ic
+	{
+		p := principal.MustDecode(string(DefaultTestStorageConfig.Canister))
+
+		rootKey := []byte{48, 129, 130, 48, 29, 6, 13, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 1, 2, 1, 6, 12, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 2, 1, 3, 97, 0, 151, 44, 207, 171, 16, 137, 198, 63, 87, 184, 84, 51, 254, 212, 167, 141, 232, 147, 119, 62, 104, 240, 46, 216, 20, 142, 37, 69, 85, 100, 94, 42, 170, 62, 155, 81, 217, 221, 1, 191, 15, 5, 36, 241, 199, 156, 13, 92, 18, 244, 75, 103, 202, 230, 240, 73, 21, 207, 253, 164, 169, 220, 115, 119, 235, 209, 55, 211, 41, 75, 219, 209, 247, 25, 252, 215, 179, 180, 52, 119, 219, 248, 96, 53, 215, 237, 203, 183, 179, 101, 31, 26, 10, 222, 191, 56}
+
+		if err := VerifyDataFromIC(response.Certificate, rootKey, p, response.Witness); err != nil {
+			return nil, err
+		}
 	}
 
 	return decodedBytes, nil

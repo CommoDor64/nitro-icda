@@ -84,8 +84,9 @@ func NewSignAfterStoreDASWriter(ctx context.Context, config DataAvailabilityConf
 
 	keyset := &daprovider.DataAvailabilityKeyset{
 		AssumedHonest: 1,
-		PubKeys:       []blsSignatures.PublicKey{publicKey},
+		PubKeys:       [][]byte{}, //FIXME
 	}
+
 	ksBuf := bytes.NewBuffer([]byte{})
 	if err := keyset.Serialize(ksBuf); err != nil {
 		return nil, err
@@ -113,11 +114,13 @@ func (d *SignAfterStoreDASWriter) Store(ctx context.Context, message []byte, tim
 		SignersMask: 1, // The aggregator will override this if we're part of a committee.
 	}
 
-	fields := c.SerializeSignableFields()
-	c.Sig, err = blsSignatures.SignMessage(d.privKey, fields)
-	if err != nil {
-		return nil, err
-	}
+	_ = c.SerializeSignableFields()
+	// c.Sig, err = blsSignatures.SignMessage(d.privKey, fields)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	c.Sig = nil
 
 	err = d.storageService.Put(ctx, message, timeout)
 	if err != nil {

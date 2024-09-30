@@ -15,7 +15,8 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
-	"github.com/offchainlabs/nitro/blsSignatures"
+
+	// "github.com/offchainlabs/nitro/blsSignatures"
 	"github.com/offchainlabs/nitro/solgen/go/bridgegen"
 	"github.com/offchainlabs/nitro/util/metricsutil"
 	"github.com/offchainlabs/nitro/util/signature"
@@ -114,12 +115,12 @@ func ParseServices(config AggregatorConfig, signer signature.DataSignerFunc) ([]
 			return nil, err
 		}
 
-		pubKey, err := DecodeBase64BLSPublicKey([]byte(b.Pubkey))
-		if err != nil {
-			return nil, err
-		}
+		// pubKey, err := DecodeBase64BLSPublicKey([]byte(b.Pubkey))
+		// if err != nil {
+		// 	return nil, err
+		// }
 
-		d, err := NewServiceDetails(service, *pubKey, 1<<uint64(i), metricName)
+		d, err := NewServiceDetails(service, []byte(b.Pubkey), 1<<uint64(i), metricName)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +133,7 @@ func ParseServices(config AggregatorConfig, signer signature.DataSignerFunc) ([]
 
 func KeysetHashFromServices(services []ServiceDetails, assumedHonest uint64) ([32]byte, []byte, error) {
 	var aggSignersMask uint64
-	pubKeys := []blsSignatures.PublicKey{}
+	pubKeys := [][]byte{}
 	for _, d := range services {
 		if bits.OnesCount64(d.signersMask) != 1 {
 			return [32]byte{}, nil, fmt.Errorf("tried to configure backend DAS %v with invalid signersMask %X", d.service, d.signersMask)
@@ -148,6 +149,7 @@ func KeysetHashFromServices(services []ServiceDetails, assumedHonest uint64) ([3
 		AssumedHonest: uint64(assumedHonest),
 		PubKeys:       pubKeys,
 	}
+
 	ksBuf := bytes.NewBuffer([]byte{})
 	if err := keyset.Serialize(ksBuf); err != nil {
 		return [32]byte{}, nil, err

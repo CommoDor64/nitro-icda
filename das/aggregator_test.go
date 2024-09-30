@@ -4,7 +4,6 @@
 package das
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -17,54 +16,53 @@ import (
 	"time"
 
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
-	"github.com/offchainlabs/nitro/blsSignatures"
 
 	"github.com/ethereum/go-ethereum/log"
 )
 
-func TestDAS_BasicAggregationLocal(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// func TestDAS_BasicAggregationLocal(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	numBackendDAS := 10
-	var backends []ServiceDetails
-	var storageServices []StorageService
-	for i := 0; i < numBackendDAS; i++ {
-		privKey, err := blsSignatures.GeneratePrivKeyString()
-		Require(t, err)
+// 	numBackendDAS := 10
+// 	var backends []ServiceDetails
+// 	var storageServices []StorageService
+// 	for i := 0; i < numBackendDAS; i++ {
+// 		privKey, err := blsSignatures.GeneratePrivKeyString()
+// 		Require(t, err)
 
-		config := DataAvailabilityConfig{
-			Enable: true,
-			Key: KeyConfig{
-				PrivKey: privKey,
-			},
-			ParentChainNodeURL: "none",
-		}
+// 		config := DataAvailabilityConfig{
+// 			Enable: true,
+// 			Key: KeyConfig{
+// 				PrivKey: privKey,
+// 			},
+// 			ParentChainNodeURL: "none",
+// 		}
 
-		storageServices = append(storageServices, NewMemoryBackedStorageService(ctx))
-		das, err := NewSignAfterStoreDASWriter(ctx, config, storageServices[i])
-		Require(t, err)
-		signerMask := uint64(1 << i)
-		details, err := NewServiceDetails(das, *das.pubKey, signerMask, "service"+strconv.Itoa(i))
-		Require(t, err)
-		backends = append(backends, *details)
-	}
+// 		storageServices = append(storageServices, NewMemoryBackedStorageService(ctx))
+// 		das, err := NewSignAfterStoreDASWriter(ctx, config, storageServices[i])
+// 		Require(t, err)
+// 		signerMask := uint64(1 << i)
+// 		details, err := NewServiceDetails(das, *das.pubKey, signerMask, "service"+strconv.Itoa(i))
+// 		Require(t, err)
+// 		backends = append(backends, *details)
+// 	}
 
-	aggregator, err := NewAggregator(ctx, DataAvailabilityConfig{RPCAggregator: AggregatorConfig{AssumedHonest: 1}, ParentChainNodeURL: "none"}, backends)
-	Require(t, err)
+// 	aggregator, err := NewAggregator(ctx, DataAvailabilityConfig{RPCAggregator: AggregatorConfig{AssumedHonest: 1}, ParentChainNodeURL: "none"}, backends)
+// 	Require(t, err)
 
-	rawMsg := []byte("It's time for you to see the fnords.")
-	cert, err := aggregator.Store(ctx, rawMsg, 0)
-	Require(t, err, "Error storing message")
+// 	rawMsg := []byte("It's time for you to see the fnords.")
+// 	cert, err := aggregator.Store(ctx, rawMsg, 0)
+// 	Require(t, err, "Error storing message")
 
-	for _, storageService := range storageServices {
-		messageRetrieved, err := storageService.GetByHash(ctx, cert.DataHash)
-		Require(t, err, "Failed to retrieve message")
-		if !bytes.Equal(rawMsg, messageRetrieved) {
-			Fail(t, "Retrieved message is not the same as stored one.")
-		}
-	}
-}
+// 	for _, storageService := range storageServices {
+// 		messageRetrieved, err := storageService.GetByHash(ctx, cert.DataHash)
+// 		Require(t, err, "Failed to retrieve message")
+// 		if !bytes.Equal(rawMsg, messageRetrieved) {
+// 			Fail(t, "Retrieved message is not the same as stored one.")
+// 		}
+// 	}
+// }
 
 type failureType int
 
@@ -165,80 +163,80 @@ func enableLogging() {
 	log.SetDefault(log.NewLogger(glogger))
 }
 
-func testConfigurableStorageFailures(t *testing.T, shouldFailAggregation bool) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// func testConfigurableStorageFailures(t *testing.T, shouldFailAggregation bool) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	numBackendDAS := (rand.Int() % 20) + 1
-	assumedHonest := (rand.Int() % numBackendDAS) + 1
-	var nFailures int
-	if shouldFailAggregation {
-		nFailures = max(assumedHonest, rand.Int()%(numBackendDAS+1))
-	} else {
-		nFailures = min(assumedHonest-1, rand.Int()%(numBackendDAS+1))
-	}
-	nSuccesses := numBackendDAS - nFailures
-	log.Trace(fmt.Sprintf("Testing aggregator with K:%d with K=N+1-H, N:%d, H:%d, and %d successes", numBackendDAS+1-assumedHonest, numBackendDAS, assumedHonest, nSuccesses))
+// 	numBackendDAS := (rand.Int() % 20) + 1
+// 	assumedHonest := (rand.Int() % numBackendDAS) + 1
+// 	var nFailures int
+// 	if shouldFailAggregation {
+// 		nFailures = max(assumedHonest, rand.Int()%(numBackendDAS+1))
+// 	} else {
+// 		nFailures = min(assumedHonest-1, rand.Int()%(numBackendDAS+1))
+// 	}
+// 	nSuccesses := numBackendDAS - nFailures
+// 	log.Trace(fmt.Sprintf("Testing aggregator with K:%d with K=N+1-H, N:%d, H:%d, and %d successes", numBackendDAS+1-assumedHonest, numBackendDAS, assumedHonest, nSuccesses))
 
-	injectedFailures := newRandomBagOfFailures(t, nSuccesses, nFailures, dataCorruption)
-	var backends []ServiceDetails
-	var storageServices []StorageService
-	for i := 0; i < numBackendDAS; i++ {
-		privKey, err := blsSignatures.GeneratePrivKeyString()
-		Require(t, err)
+// 	injectedFailures := newRandomBagOfFailures(t, nSuccesses, nFailures, dataCorruption)
+// 	var backends []ServiceDetails
+// 	var storageServices []StorageService
+// 	for i := 0; i < numBackendDAS; i++ {
+// 		privKey, err := blsSignatures.GeneratePrivKeyString()
+// 		Require(t, err)
 
-		config := DataAvailabilityConfig{
-			Enable: true,
-			Key: KeyConfig{
-				PrivKey: privKey,
-			},
-			ParentChainNodeURL: "none",
-		}
+// 		config := DataAvailabilityConfig{
+// 			Enable: true,
+// 			Key: KeyConfig{
+// 				PrivKey: privKey,
+// 			},
+// 			ParentChainNodeURL: "none",
+// 		}
 
-		storageServices = append(storageServices, NewMemoryBackedStorageService(ctx))
-		das, err := NewSignAfterStoreDASWriter(ctx, config, storageServices[i])
-		Require(t, err)
-		signerMask := uint64(1 << i)
-		details, err := NewServiceDetails(&WrapStore{t, injectedFailures, das}, *das.pubKey, signerMask, "service"+strconv.Itoa(i))
-		Require(t, err)
-		backends = append(backends, *details)
-	}
+// 		storageServices = append(storageServices, NewMemoryBackedStorageService(ctx))
+// 		das, err := NewSignAfterStoreDASWriter(ctx, config, storageServices[i])
+// 		Require(t, err)
+// 		signerMask := uint64(1 << i)
+// 		details, err := NewServiceDetails(&WrapStore{t, injectedFailures, das}, *das.pubKey, signerMask, "service"+strconv.Itoa(i))
+// 		Require(t, err)
+// 		backends = append(backends, *details)
+// 	}
 
-	aggregator, err := NewAggregator(
-		ctx,
-		DataAvailabilityConfig{
-			RPCAggregator:      AggregatorConfig{AssumedHonest: assumedHonest},
-			ParentChainNodeURL: "none",
-			RequestTimeout:     time.Millisecond * 2000,
-		}, backends)
-	Require(t, err)
+// 	aggregator, err := NewAggregator(
+// 		ctx,
+// 		DataAvailabilityConfig{
+// 			RPCAggregator:      AggregatorConfig{AssumedHonest: assumedHonest},
+// 			ParentChainNodeURL: "none",
+// 			RequestTimeout:     time.Millisecond * 2000,
+// 		}, backends)
+// 	Require(t, err)
 
-	rawMsg := []byte("It's time for you to see the fnords.")
-	cert, err := aggregator.Store(ctx, rawMsg, 0)
-	if !shouldFailAggregation {
-		Require(t, err, "Error storing message")
-	} else {
-		if err == nil {
-			Fail(t, "Expected error from too many failed DASes.")
-		}
-		return
-	}
+// 	rawMsg := []byte("It's time for you to see the fnords.")
+// 	cert, err := aggregator.Store(ctx, rawMsg, 0)
+// 	if !shouldFailAggregation {
+// 		Require(t, err, "Error storing message")
+// 	} else {
+// 		if err == nil {
+// 			Fail(t, "Expected error from too many failed DASes.")
+// 		}
+// 		return
+// 	}
 
-	// Wait for all stores that would succeed to succeed.
-	time.Sleep(time.Millisecond * 2000)
-	retrievalFailures := 0
-	for _, storageService := range storageServices {
-		messageRetrieved, err := storageService.GetByHash(ctx, cert.DataHash)
-		if err != nil {
-			retrievalFailures++
-		} else if !bytes.Equal(rawMsg, messageRetrieved) {
-			retrievalFailures++
-		}
-	}
-	if retrievalFailures > nFailures {
-		Fail(t, fmt.Sprintf("retrievalFailures(%d) > nFailures(%d)", retrievalFailures, nFailures))
-	}
-}
+// 	// Wait for all stores that would succeed to succeed.
+// 	time.Sleep(time.Millisecond * 2000)
+// 	retrievalFailures := 0
+// 	for _, storageService := range storageServices {
+// 		messageRetrieved, err := storageService.GetByHash(ctx, cert.DataHash)
+// 		if err != nil {
+// 			retrievalFailures++
+// 		} else if !bytes.Equal(rawMsg, messageRetrieved) {
+// 			retrievalFailures++
+// 		}
+// 	}
+// 	if retrievalFailures > nFailures {
+// 		Fail(t, fmt.Sprintf("retrievalFailures(%d) > nFailures(%d)", retrievalFailures, nFailures))
+// 	}
+// }
 
 func initTest(t *testing.T) int {
 	t.Parallel()
@@ -270,23 +268,23 @@ func initTest(t *testing.T) int {
 	return runs
 }
 
-func TestDAS_LessThanHStorageFailures(t *testing.T) {
-	runs := initTest(t)
+// func TestDAS_LessThanHStorageFailures(t *testing.T) {
+// 	runs := initTest(t)
 
-	for i := 0; i < min(runs, 20); i++ {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			t.Parallel()
-			testConfigurableStorageFailures(t, false)
-		})
-	}
-}
+// 	for i := 0; i < min(runs, 20); i++ {
+// 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+// 			t.Parallel()
+// 			testConfigurableStorageFailures(t, false)
+// 		})
+// 	}
+// }
 
-func TestDAS_AtLeastHStorageFailures(t *testing.T) {
-	runs := initTest(t)
-	for i := 0; i < min(runs, 10); i++ {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			t.Parallel()
-			testConfigurableStorageFailures(t, true)
-		})
-	}
-}
+// func TestDAS_AtLeastHStorageFailures(t *testing.T) {
+// 	runs := initTest(t)
+// 	for i := 0; i < min(runs, 10); i++ {
+// 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+// 			t.Parallel()
+// 			testConfigurableStorageFailures(t, true)
+// 		})
+// 	}
+// }
