@@ -20,7 +20,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/offchainlabs/nitro/blsSignatures"
 	"github.com/offchainlabs/nitro/cmd/genericconf"
 	"github.com/offchainlabs/nitro/util/pretty"
 )
@@ -136,7 +135,7 @@ func (s *DASRPCServer) Store(ctx context.Context, message hexutil.Bytes, timeout
 		DataHash:    cert.DataHash[:],
 		Timeout:     hexutil.Uint64(cert.Timeout),
 		SignersMask: hexutil.Uint64(cert.SignersMask),
-		Sig:         blsSignatures.SignatureToBytes(cert.Sig),
+		Sig:         nil,
 		Version:     hexutil.Uint64(cert.Version),
 	}, nil
 }
@@ -345,7 +344,7 @@ func (s *DASRPCServer) CommitChunkedStore(ctx context.Context, batchId hexutil.U
 		DataHash:    cert.DataHash[:],
 		Timeout:     hexutil.Uint64(cert.Timeout),
 		SignersMask: hexutil.Uint64(cert.SignersMask),
-		Sig:         blsSignatures.SignatureToBytes(cert.Sig),
+		Sig:         nil,
 		Version:     hexutil.Uint64(cert.Version),
 	}, nil
 }

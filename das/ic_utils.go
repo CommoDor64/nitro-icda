@@ -11,6 +11,7 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
+
 type CertifiedBlock struct {
 	Certificate []byte `ic:"certificate" json:"certificate"`
 	Data        []byte `ic:"data" json:"data"`
@@ -130,6 +131,7 @@ func VerifyDataFromIC(certificate []byte, rootKey []byte, canister principal.Pri
 
 	ht, err := hashtree.Deserialize(witness)
 	if err != nil {
+		fmt.Println("failing reading witness")
 		return err
 	}
 

@@ -16,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
-	"github.com/offchainlabs/nitro/blsSignatures"
 	"github.com/offchainlabs/nitro/util/pretty"
 	"github.com/offchainlabs/nitro/util/signature"
 )
@@ -110,16 +109,16 @@ func (c *DASRPCClient) Store(ctx context.Context, message []byte, timeout uint64
 		return nil, err
 	}
 
-	respSig, err := blsSignatures.SignatureFromBytes(storeResult.Sig)
-	if err != nil {
-		return nil, err
-	}
+	// respSig, err := blsSignatures.SignatureFromBytes(storeResult.Sig)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return &daprovider.DataAvailabilityCertificate{
 		DataHash:    common.BytesToHash(storeResult.DataHash),
 		Timeout:     uint64(storeResult.Timeout),
 		SignersMask: uint64(storeResult.SignersMask),
-		Sig:         respSig,
+		Sig:         storeResult.Sig,
 		KeysetHash:  common.BytesToHash(storeResult.KeysetHash),
 		Version:     byte(storeResult.Version),
 	}, nil
@@ -149,15 +148,16 @@ func (c *DASRPCClient) legacyStore(ctx context.Context, message []byte, timeout 
 	if err := c.clnt.CallContext(ctx, &ret, "das_store", hexutil.Bytes(message), hexutil.Uint64(timeout), hexutil.Bytes(reqSig)); err != nil {
 		return nil, err
 	}
-	respSig, err := blsSignatures.SignatureFromBytes(ret.Sig)
-	if err != nil {
-		return nil, err
-	}
+
+	// respSig, err := blsSignatures.SignatureFromBytes(ret.Sig)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return &daprovider.DataAvailabilityCertificate{
 		DataHash:    common.BytesToHash(ret.DataHash),
 		Timeout:     uint64(ret.Timeout),
 		SignersMask: uint64(ret.SignersMask),
-		Sig:         respSig,
+		Sig:         ret.Sig,
 		KeysetHash:  common.BytesToHash(ret.KeysetHash),
 		Version:     byte(ret.Version),
 	}, nil
