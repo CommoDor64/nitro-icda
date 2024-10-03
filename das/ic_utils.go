@@ -11,7 +11,6 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-
 type CertifiedBlock struct {
 	Certificate []byte `ic:"certificate" json:"certificate"`
 	Data        []byte `ic:"data" json:"data"`

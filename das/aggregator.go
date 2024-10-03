@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/aviate-labs/agent-go/principal"
 	flag "github.com/spf13/pflag"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,7 +23,6 @@ import (
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 	"github.com/offchainlabs/nitro/arbutil"
 
-	// "github.com/offchainlabs/nitro/blsSignatures"
 	"github.com/offchainlabs/nitro/das/dastree"
 	"github.com/offchainlabs/nitro/solgen/go/bridgegen"
 	"github.com/offchainlabs/nitro/util/pretty"
@@ -309,23 +307,16 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 		return nil, cd.err
 	}
 
-	aggCert.Sig = cd.sigs[0] // CHECK ME! maybe taking the 0 element no goot
+	aggCert.Sig = cd.sigs[0]
 	rootKey := cd.pubKeys
 	aggCert.SignersMask = cd.aggSignersMask
-
 	aggCert.DataHash = expectedHash
 	aggCert.Timeout = timeout
 	aggCert.KeysetHash = a.keysetHash
 	aggCert.Version = 1
 
-	// return later
-	// rootKey = []byte{48, 129, 130, 48, 29, 6, 13, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 1, 2, 1, 6, 12, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 2, 1, 3, 97, 0, 151, 44, 207, 171, 16, 137, 198, 63, 87, 184, 84, 51, 254, 212, 167, 141, 232, 147, 119, 62, 104, 240, 46, 216, 20, 142, 37, 69, 85, 100, 94, 42, 170, 62, 155, 81, 217, 221, 1, 191, 15, 5, 36, 241, 199, 156, 13, 92, 18, 244, 75, 103, 202, 230, 240, 73, 21, 207, 253, 164, 169, 220, 115, 119, 235, 209, 55, 211, 41, 75, 219, 209, 247, 25, 252, 215, 179, 180, 52, 119, 219, 248, 96, 53, 215, 237, 203, 183, 179, 101, 31, 26, 10, 222, 191, 56}
-
-	p := principal.MustDecode("bkyz2-fmaaa-aaaaa-qaaaq-cai")
-
 	var cb CertifiedBlock
 	if err := json.Unmarshal(aggCert.Sig, &cb); err != nil {
-		fmt.Println("error here!!:", err)
 		return nil, err
 	}
 
@@ -337,9 +328,7 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 		return nil, err
 	}
 
-	fmt.Println(k)
-	if err := VerifyDataFromIC(cb.Certificate, k, p, cb.Witness); err != nil {
-		fmt.Println("failed verifying our important shit!", err)
+	if err := daprovider.VerifyDataFromIC(cb.Certificate, k, daprovider.DefaultCanister, cb.Witness); err != nil {
 		return nil, err
 	}
 

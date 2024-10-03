@@ -7,20 +7,18 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"time"
 
-	agentcert "github.com/aviate-labs/agent-go/certification"
-	"github.com/aviate-labs/agent-go/certification/hashtree"
-	"github.com/aviate-labs/agent-go/principal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/fxamacker/cbor/v2"
 
 	"github.com/offchainlabs/nitro/arbos/util"
 	"github.com/offchainlabs/nitro/arbutil"
@@ -202,17 +200,28 @@ func RecoverPayloadFromDasBatch(
 		dastree.RecordHash(preimageRecorder, keysetPreimage)
 	}
 
-	// keyset, err := DeserializeKeyset(bytes.NewReader(keysetPreimage), !validateSeqMsg)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("%w. Couldn't deserialize keyset, err: %w, keyset hash: %x batch num: %d", ErrSeqMsgValidation, err, cert.KeysetHash, batchNum)
-	// }
+	keyset, err := DeserializeKeyset(bytes.NewReader(keysetPreimage), !validateSeqMsg)
+	if err != nil {
+		return nil, fmt.Errorf("%w. Couldn't deserialize keyset, err: %w, keyset hash: %x batch num: %d", ErrSeqMsgValidation, err, cert.KeysetHash, batchNum)
+	}
 
-	// fmt.Println(keyset.PubKeys[0])
-	// err = keyset.VerifySignature(cert.SignersMask, cert.SerializeSignableFields(), cert.Sig)
-	// if err != nil {
-	// 	log.Error("Bad signature on DAS batch", "err", err)
-	// 	return nil, nil
-	// }
+	rootKey := keyset.PubKeys[0]
+	decodedLen := base64.StdEncoding.DecodedLen(len(rootKey))
+	k := make([]byte, decodedLen)
+
+	_, err = base64.StdEncoding.Decode(k, rootKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var cb CertifiedBlock
+	if err := json.Unmarshal(cert.Sig, &cb); err != nil {
+		return nil, err
+	}
+
+	if err := VerifyDataFromIC(cb.Certificate, k, DefaultCanister, cb.Witness); err != nil {
+		return nil, err
+	}
 
 	maxTimestamp := binary.BigEndian.Uint64(sequencerMsg[8:16])
 	if cert.Timeout < maxTimestamp+MinLifetimeSecondsForDataAvailabilityCert {
@@ -237,51 +246,6 @@ func RecoverPayloadFromDasBatch(
 	}
 
 	return payload, nil
-}
-
-func VerifyDataFromIC(certificate []byte, rootKey []byte, canister principal.Principal, witness []byte) error {
-
-	var c agentcert.Certificate
-	if err := cbor.Unmarshal(certificate, &c); err != nil {
-		return err
-	}
-
-	if err := agentcert.VerifyCertificate(c, canister, rootKey); err != nil {
-		return err
-	}
-
-	providedRootHash, err := c.Tree.Lookup(
-		hashtree.Label("canister"),
-		canister.Raw,
-		hashtree.Label("certified_data"))
-	if err != nil {
-		return err
-	}
-
-	ht, err := hashtree.Deserialize(witness)
-	if err != nil {
-		return err
-	}
-
-	//FIXME! check inclusion!!
-
-	// h := sha256.New()
-	// h.Write(cb.Data)
-	// dataHash := h.Sum(nil)
-
-	// if _, err := hashtree.Lookup(ht, hashtree.Label(hex.EncodeToString(dataHash))); err != nil {
-	// 	panic(errors.New(fmt.Sprintf("couldn't find hash %x in hashtree", dataHash)))
-	// }
-
-	var rootHash [32]byte
-	copy(rootHash[:], providedRootHash)
-
-	witnessHash := ht.Reconstruct()
-	if witnessHash != rootHash {
-		return errors.New(fmt.Sprintf("witness hash %x doesn't match known root hash %x", witnessHash, rootHash))
-	}
-
-	return nil
 }
 
 type DataAvailabilityCertificate struct {
@@ -338,13 +302,12 @@ func DeserializeDASCertFrom(rd io.Reader) (c *DataAvailabilityCertificate, err e
 	}
 	c.SignersMask = binary.BigEndian.Uint64(signersMaskBuf[:])
 
-	var blsSignaturesBuf [96]byte
-	_, err = io.ReadFull(r, blsSignaturesBuf[:])
+	blsSignaturesBuf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 
-	c.Sig = blsSignaturesBuf[:]
+	c.Sig = blsSignaturesBuf
 
 	return c, nil
 }
@@ -539,5 +502,6 @@ func Serialize(c *DataAvailabilityCertificate) []byte {
 	binary.BigEndian.PutUint64(intData[:], c.SignersMask)
 	buf = append(buf, intData[:]...)
 
-	return append(buf, c.Sig...)
+	s := append(buf, c.Sig...)
+	return s
 }
