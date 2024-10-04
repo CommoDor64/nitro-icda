@@ -64,6 +64,7 @@ func VerifyDataFromIC(certificate []byte, rootKey []byte, canister principal.Pri
 
 	return nil
 }
+
 func VerifyCertificate(certificate []byte, rootKey []byte, canister principal.Principal) error {
 
 	var c agentcert.Certificate
