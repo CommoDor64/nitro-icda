@@ -9,6 +9,7 @@ replace github.com/VictoriaMetrics/fastcache => ./fastcache
 replace github.com/ethereum/go-ethereum => ./go-ethereum
 
 require (
+	github.com/CommoDor64/icdaserver v0.0.0-20241103162538-f6fc09c9e12e
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
 	github.com/alicebob/miniredis/v2 v2.32.1
@@ -50,7 +51,6 @@ require (
 	golang.org/x/term v0.18.0
 	golang.org/x/tools v0.16.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	github.com/CommoDor64/icdaserver v0.0.0-20241103154548-ae31126966db
 )
 
 require (

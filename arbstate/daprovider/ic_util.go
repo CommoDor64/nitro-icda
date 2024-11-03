@@ -1,4 +1,4 @@
-// package daprovider
+package daprovider
 
 // import (
 // 	"errors"
