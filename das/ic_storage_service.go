@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"icdaserver/icutils"
 	"net/url"
 	"time"
+
+	"github.com/CommoDor64/icdaserver/icutils"
 
 	"github.com/aviate-labs/agent-go"
 	"github.com/aviate-labs/agent-go/principal"

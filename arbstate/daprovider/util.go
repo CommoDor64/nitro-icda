@@ -12,9 +12,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"icdaserver/icutils"
 	"io"
 	"time"
+
+	"github.com/CommoDor64/icdaserver/icutils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

@@ -10,10 +10,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"icdaserver/icutils"
 	"math/bits"
 	"sync/atomic"
 	"time"
+
+	"github.com/CommoDor64/icdaserver/icutils"
 
 	flag "github.com/spf13/pflag"
 
