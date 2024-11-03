@@ -50,6 +50,7 @@ require (
 	golang.org/x/term v0.18.0
 	golang.org/x/tools v0.16.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	github.com/CommoDor64/icdaserver v0.0.0-20241103154548-ae31126966db
 )
 
 require (
