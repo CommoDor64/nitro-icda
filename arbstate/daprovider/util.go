@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"icdaserver/icutils"
 	"io"
 	"time"
 
@@ -214,12 +215,12 @@ func RecoverPayloadFromDasBatch(
 		return nil, err
 	}
 
-	var cb CertifiedBlock
+	var cb icutils.CertifiedBlock
 	if err := json.Unmarshal(cert.Sig, &cb); err != nil {
 		return nil, err
 	}
 
-	if err := VerifyDataFromIC(cb.Certificate, k, DefaultCanister, cb.Witness); err != nil {
+	if _, err := icutils.VerifyDataFromIC(cb.Certificate, k, icutils.ToPrincipal(cb.Canister), cb.Witness, cb.Data); err != nil {
 		return nil, err
 	}
 
@@ -428,15 +429,6 @@ func (keyset *DataAvailabilityKeyset) VerifySignature(signersMask uint64, data [
 	if numNonSigners >= keyset.AssumedHonest {
 		return errors.New("not enough signers")
 	}
-	// aggregatedPubKey := blsSignatures.AggregatePublicKeys(pubkeys)
-	// success, err := blsSignatures.VerifySignature(sig, data, aggregatedPubKey)
-
-	// if err != nil {
-	// 	return err
-	// }
-	// if !success {
-	// 	return errors.New("bad signature")
-	// }
 
 	return nil
 }

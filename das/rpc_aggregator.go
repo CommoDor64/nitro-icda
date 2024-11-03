@@ -16,7 +16,6 @@ import (
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/offchainlabs/nitro/arbstate/daprovider"
 
-	// "github.com/offchainlabs/nitro/blsSignatures"
 	"github.com/offchainlabs/nitro/solgen/go/bridgegen"
 	"github.com/offchainlabs/nitro/util/metricsutil"
 	"github.com/offchainlabs/nitro/util/signature"
@@ -114,11 +113,6 @@ func ParseServices(config AggregatorConfig, signer signature.DataSignerFunc) ([]
 		if err != nil {
 			return nil, err
 		}
-
-		// pubKey, err := DecodeBase64BLSPublicKey([]byte(b.Pubkey))
-		// if err != nil {
-		// 	return nil, err
-		// }
 
 		d, err := NewServiceDetails(service, []byte(b.Pubkey), 1<<uint64(i), metricName)
 		if err != nil {

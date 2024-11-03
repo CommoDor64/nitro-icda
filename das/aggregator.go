@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"icdaserver/icutils"
 	"math/bits"
 	"sync/atomic"
 	"time"
@@ -315,7 +316,7 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 	aggCert.KeysetHash = a.keysetHash
 	aggCert.Version = 1
 
-	var cb CertifiedBlock
+	var cb icutils.CertifiedBlock
 	if err := json.Unmarshal(aggCert.Sig, &cb); err != nil {
 		return nil, err
 	}
@@ -328,7 +329,7 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 		return nil, err
 	}
 
-	if err := daprovider.VerifyDataFromIC(cb.Certificate, k, daprovider.DefaultCanister, cb.Witness); err != nil {
+	if _, err := icutils.VerifyDataFromIC(cb.Certificate, k, icutils.ToPrincipal(cb.Canister), cb.Witness, cb.Data); err != nil {
 		return nil, err
 	}
 

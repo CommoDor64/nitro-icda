@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"icdaserver/icutils"
 	"net/url"
 	"time"
 
@@ -39,7 +40,7 @@ func ICStorageConfigAddOptions(prefix string, f *flag.FlagSet) {
 }
 
 type ICStorageService struct {
-	Agent    *Agent
+	Agent    *icutils.Agent
 	Canister principal.Principal
 	Cache    map[string]string
 }
@@ -58,7 +59,7 @@ func NewICStorageService(config ICStorageConfig) (StorageService, error) {
 
 	p := principal.MustDecode(string(config.Canister))
 
-	a, err := NewAgent(p, aconfig)
+	a, err := icutils.NewAgent(p, aconfig)
 	if err != nil {
 		return nil, err
 	}
@@ -77,9 +78,7 @@ func (s *ICStorageService) Read(ctx context.Context) error {
 func (s ICStorageService) Put(ctx context.Context, data []byte, expirationTime uint64) error {
 	_, err := s.Agent.Store(
 		dastree.Hash(data).Hex(),
-		Object{
-			Data: data,
-		})
+		data)
 
 	if err != nil {
 		return nil
@@ -104,7 +103,7 @@ func (s ICStorageService) GetByHash(ctx context.Context, hash common.Hash) ([]by
 		panic(err)
 	}
 
-	if err := VerifyDataFromIC(cb.Certificate, s.Agent.GetRootKey(), s.Canister, cb.Witness); err != nil {
+	if _, err := icutils.VerifyDataFromIC(cb.Certificate, s.Agent.GetRootKey(), s.Canister, cb.Witness, cb.Data); err != nil {
 		return nil, err
 	}
 

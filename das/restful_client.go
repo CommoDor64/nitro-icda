@@ -75,17 +75,6 @@ func (c *RestfulDasClient) GetByHash(ctx context.Context, hash common.Hash) ([]b
 		return nil, daprovider.ErrHashMismatch
 	}
 
-	// // ICDA: verify L2 data coming from ic
-	// {
-	// 	p := principal.MustDecode(string(DefaultTestStorageConfig.Canister))
-
-	// 	rootKey := []byte{48, 129, 130, 48, 29, 6, 13, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 1, 2, 1, 6, 12, 43, 6, 1, 4, 1, 130, 220, 124, 5, 3, 2, 1, 3, 97, 0, 184, 144, 225, 237, 54, 1, 156, 0, 29, 86, 172, 96, 112, 82, 127, 156, 217, 69, 27, 159, 9, 247, 116, 100, 118, 209, 60, 101, 39, 123, 245, 82, 195, 182, 241, 240, 99, 235, 171, 47, 14, 225, 49, 212, 247, 215, 132, 7, 18, 94, 207, 28, 236, 177, 68, 227, 152, 124, 115, 163, 111, 243, 238, 230, 164, 78, 211, 201, 249, 27, 24, 60, 9, 66, 118, 198, 80, 221, 35, 98, 208, 68, 234, 146, 135, 114, 60, 91, 234, 134, 235, 155, 152, 156, 171, 12}
-
-	// 	if err := VerifyDataFromIC(response.Certificate, rootKey, p, response.Witness); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
 	return decodedBytes, nil
 }
 

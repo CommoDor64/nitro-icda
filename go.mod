@@ -1,13 +1,14 @@
 module github.com/offchainlabs/nitro
 
-go 1.22.1
+go 1.22.2
 
-toolchain go1.22.2
+toolchain go1.22.4
 
 replace github.com/VictoriaMetrics/fastcache => ./fastcache
 
 replace github.com/ethereum/go-ethereum => ./go-ethereum
 
+replace icdaserver => ../icdaserver
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Shopify/toxiproxy v2.1.4+incompatible
@@ -50,19 +51,21 @@ require (
 	golang.org/x/term v0.18.0
 	golang.org/x/tools v0.16.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	icdaserver v0.0.0
 )
 
 require (
 	github.com/aviate-labs/agent-go v0.5.1 // indirect
 	github.com/aviate-labs/leb128 v0.3.0 // indirect
 	github.com/aviate-labs/secp256k1 v0.0.0-5e6736a // indirect
-	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/herumi/bls-go-binary v1.34.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 )
 
 require (
+	github.com/CommoDor64/icdaserver v0.0.0-20241103115037-8c0ea762de4c
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
