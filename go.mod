@@ -65,7 +65,6 @@ require (
 )
 
 require (
-	github.com/CommoDor64/icdaserver v0.0.0-20241103115037-8c0ea762de4c
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
