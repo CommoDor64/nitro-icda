@@ -216,15 +216,6 @@ func RecoverPayloadFromDasBatch(
 		return nil, err
 	}
 
-	var cb icutils.CertifiedBlock
-	if err := json.Unmarshal(cert.Sig, &cb); err != nil {
-		return nil, err
-	}
-
-	if _, err := icutils.VerifyDataFromIC(cb.Certificate, k, icutils.ToPrincipal(cb.Canister), cb.Witness, cb.Data); err != nil {
-		return nil, err
-	}
-
 	maxTimestamp := binary.BigEndian.Uint64(sequencerMsg[8:16])
 	if cert.Timeout < maxTimestamp+MinLifetimeSecondsForDataAvailabilityCert {
 		log.Error("Data availability cert expires too soon", "err", "")
@@ -245,6 +236,15 @@ func RecoverPayloadFromDasBatch(
 		} else {
 			dastree.RecordHash(preimageRecorder, payload)
 		}
+	}
+
+	var cb icutils.CertifiedBlock
+	if err := json.Unmarshal(cert.Sig, &cb); err != nil {
+		return nil, err
+	}
+
+	if _, err := icutils.VerifyDataFromIC(cb.Certificate, k, icutils.ToPrincipal(cb.Canister), cb.Witness, dataHash[:]); err != nil {
+		return nil, err
 	}
 
 	return payload, nil

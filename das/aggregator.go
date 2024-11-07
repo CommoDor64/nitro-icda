@@ -330,7 +330,7 @@ func (a *Aggregator) Store(ctx context.Context, message []byte, timeout uint64) 
 		return nil, err
 	}
 
-	if _, err := icutils.VerifyDataFromIC(cb.Certificate, k, icutils.ToPrincipal(cb.Canister), cb.Witness, cb.Data); err != nil {
+	if _, err := icutils.VerifyDataFromIC(cb.Certificate, k, icutils.ToPrincipal(cb.Canister), cb.Witness, aggCert.DataHash[:]); err != nil {
 		return nil, err
 	}
 
