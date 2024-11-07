@@ -40,6 +40,8 @@ github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53/go.mod h1:+3
 github.com/CloudyKit/jet/v3 v3.0.0/go.mod h1:HKQPgSJmdK8hdoAbKUUWajkHyHo4RaU5rMdUywE7VMo=
 github.com/CommoDor64/icdaserver v0.0.0-20241103162538-f6fc09c9e12e h1:Xtly/AGMIpUaLm9q6iKlsevZKPwMi3YUff3Zrv4x+E8=
 github.com/CommoDor64/icdaserver v0.0.0-20241103162538-f6fc09c9e12e/go.mod h1:KrVDwKdrpfOkhokNFaaiHz7pwlPhUx2kbFYNPO+SGLU=
+github.com/CommoDor64/icdaserver v0.1.0 h1:xzDGOHj9W3/4hS9fZ3g+bbZnMRibLe8eJ28xOvWA+sI=
+github.com/CommoDor64/icdaserver v0.1.0/go.mod h1:XzRBzzTxhnXTVxYGdURlZ6xNfqYsfugTnK9eT995DP0=
 github.com/DataDog/zstd v1.4.5 h1:EndNeuB0l9syBZhut0wns3gV1hL8zX8LIu6ZiVHWLIQ=
 github.com/DataDog/zstd v1.4.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
 github.com/Joker/hpp v1.0.0/go.mod h1:8x5n+M1Hp5hC0g8okX3sR3vFQwynaX/UgSOM9MeBKzY=
